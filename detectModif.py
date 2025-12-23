@@ -302,6 +302,7 @@ def run(
     #     json.dump(res, f)
 
     print(json.dumps(res))  # Print JSON to standard output
+    return res
 
 def parse_opt():
     """Parses command-line arguments for YOLOv5 detection, setting inference options and model configurations."""
