@@ -1107,3 +1107,70 @@ class Classify(nn.Module):
         if isinstance(x, list):
             x = torch.cat(x, 1)
         return self.linear(self.drop(self.pool(self.conv(x)).flatten(1)))
+
+class ChannelAttention(nn.Module):
+    def __init__(self, c_in, ratio=16):
+        super().__init__()
+
+        self.pool_avg = nn.AdaptiveAvgPool2d(1)
+       
+        # Shared MLP (Multi-Layer Perceptron)
+        self.mlp = nn.Sequential(
+            nn.Conv2d(c_in, c_in // ratio, 1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(c_in // ratio, c_in, 1, bias=False)
+        )
+        self.sigmoid = nn.Sigmoid()
+
+
+    def forward(self, x):
+        max_pool_out = x.view(x.size(0), x.size(1), -1).max(2)[0].view(x.size(0), x.size(1), 1, 1)
+       
+        avg_pool_out = self.pool_avg(x)
+
+        max_out = self.mlp(max_pool_out)
+        avg_out = self.mlp(avg_pool_out)
+       
+        return self.sigmoid(max_out + avg_out)
+
+class SpatialAttention(nn.Module):
+    def __init__(self, kernel_size=7):
+        super().__init__()
+        # Ensure padding maintains spatial dimensions 
+        pad = kernel_size // 2
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding=pad, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+
+    def forward(self, x):
+        # Compress channel dim: take Max and Mean across channels
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+       
+        # Concatenate spatial maps and apply convolution
+        x_cat = torch.cat([max_out, avg_out], dim=1)
+        return self.sigmoid(self.conv(x_cat))
+
+class CBAM(nn.Module):
+    # CBAM integrated into a Convolutional Block (Standard YOLOv5 style)
+    def __init__(self, c1, c2, k=3, shortcut=True, g=1, e=0.5, ratio=16):
+        super().__init__()
+        c_hidden = int(c2 * e)  # Hidden channel size
+       
+        # Feature extraction layers
+        self.cv1 = Conv(c1, c_hidden, 1, 1)
+        self.cv2 = Conv(c_hidden, c2, 3, 1, g=g)
+        self.add = shortcut and c1 == c2  # Residual connection check
+       
+        # Attention Modules
+        self.channel_att = ChannelAttention(c2, ratio)
+        self.spatial_att = SpatialAttention(kernel_size=7)
+
+
+    def forward(self, x):
+        feat = self.cv2(self.cv1(x))
+       
+        feat = feat * self.channel_att(feat) # Apply Channel Attention
+        feat = feat * self.spatial_att(feat) # Apply Spatial Attention
+       
+        return x + feat if self.add else feat
