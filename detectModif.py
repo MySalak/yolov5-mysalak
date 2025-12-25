@@ -301,9 +301,9 @@ def run(
     # with open(str(save_dir / "result.json"), "w") as f:
     #     json.dump(res, f)
 
-    # print(json.dumps(res))  # Print JSON to standard output
-    print(f"Detection complete - total: {res['total']}, image_size: {len(res['image'])} chars")
-    return res
+    print(json.dumps(res))  # Print JSON to standard output
+    # print(f"Detection complete - total: {res['total']}, image_size: {len(res['image'])} chars")
+    # return res
 
 def parse_opt():
     """Parses command-line arguments for YOLOv5 detection, setting inference options and model configurations."""
