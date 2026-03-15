@@ -474,6 +474,10 @@ class DetectMultiBackend(nn.Module):
         #   TensorFlow Edge TPU:            *_edgetpu.tflite
         #   PaddlePaddle:                   *_paddle_model
         from models.experimental import attempt_download, attempt_load  # scoped to avoid circular import
+        import platform
+        import pathlib
+        if platform.system() == "Windows":
+            pathlib.PosixPath = pathlib.WindowsPath
 
         super().__init__()
         w = str(weights[0] if isinstance(weights, list) else weights)

@@ -34,7 +34,10 @@ import os
 import platform
 import sys
 from pathlib import Path
-from flask import jsonify
+import pathlib
+if platform.system() == "Windows":
+    pathlib.PosixPath = pathlib.WindowsPath
+
 import cv2
 import base64
 import numpy as np
@@ -293,6 +296,7 @@ def run(
     # Replace jsonify with a simple dictionary
 
     res = {
+        "status": "success",
         "total": total_detections,
         "image": img_str
     }
@@ -301,9 +305,9 @@ def run(
     # with open(str(save_dir / "result.json"), "w") as f:
     #     json.dump(res, f)
 
-    print(json.dumps(res))  # Print JSON to standard output
+    # print(json.dumps(res))  # Removed print to stdout to avoid clutter
     # print(f"Detection complete - total: {res['total']}, image_size: {len(res['image'])} chars")
-    # return res
+    return res
 
 def parse_opt():
     """Parses command-line arguments for YOLOv5 detection, setting inference options and model configurations."""
